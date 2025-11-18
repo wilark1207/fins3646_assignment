@@ -329,6 +329,87 @@ def _test_mk_ma_info_has_both_tickers():
     print_msg("Any missing tgt in ma_info? ->",
               ma_info["tgt"].isna().any(), '')
 
+# Jordan's Changes
+
+def _test_expand_event_dates():
+    """
+    Copy of the main function that prints information about the profitability
+    of trading strategies
+
+    YOU MAY MODIFY THIS FUNCTION IN ANY WAY YOU LIKE.
+    """
+    print_msg("Running _test_main...", as_header=True)
+    # 1: Read CSV files
+    stk_rets = read_stk_rets()
+    ma_deals = read_ma_deals()
+    org_ff = read_org_ff()
+
+    # 2: Construct deal-level information
+    ma_info = mk_ma_info(ma_deals)
+
+    # 3: Compute abnormal returns
+    stk_arets = mk_stk_arets(
+            stk_rets=stk_rets,
+            org_ff=org_ff,
+    )
+
+    print(ma_info)
+    print(stk_rets.index)
+
+    print("Expand Dates starts past this \n")
+    # 4: Expand events across event windows
+    expanded_ma_info = expand_event_dates(
+            events=ma_info,
+            valid_dates=stk_rets.index,
+    )
+    
+
+    #Notes:
+    
+    #  Potential Issue:
+    #Seems to select the correct number of days inside the 30day which 
+    print(expanded_ma_info.tail(60))
+    print(expanded_ma_info.iloc[1582:1601])
+    #although the slice might not include the 30th day since end is not included
+    # window_idx = dates.loc[start:end].index
+    
+    #if that's the problem, solution should be to just
+    # window_idx = dates.loc[start:end+1].index
+    
+    
+    
+    #Has RangeIndex as specified in docstring
+    print(type(expanded_ma_info.index))
+    
+    
+    #Datatypes look correct based on doc string in mk_buy_tgt_sell_acq_rets
+    expanded_ma_info.info()
+
+    #it printed null with the first test dataframe (event outside of valid date)
+    #Aligns with doc string
+    import datetime as dt
+    test_df = pd.DataFrame({
+        'announcement': dt.datetime(year=2020, month=4, day=9),
+        'dealno': [47593],
+        'acq': ['company2'],
+        'tgt': ['company1']
+    })
+    expanded_ma_info_test = expand_event_dates(
+        events=test_df,
+        valid_dates=stk_rets.index,
+    )
+    
+    print(expanded_ma_info_test)
+
+    #The below line of code might be slightly redundant, as ignore_index=True already
+    #resets the index of the new concat dataframe to integer index but I don't know
+    #if that is relevant
+
+
+    #return pd.concat(out, ignore_index=True).reset_index(drop=True)
+
+
+
 
 # ----------------------------------------------------------------------------
 #  Function to run all other tests
@@ -348,6 +429,10 @@ def run_tests():
     #Ivan's addition, uncomment if needed.
     #_test_mk_ma_info() 
     #_test_mk_ma_info_has_both_tickers()
+        
+ 
+ 
+
 
     
 if __name__ == "__main__":
