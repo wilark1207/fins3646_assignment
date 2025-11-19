@@ -10,7 +10,7 @@ IMPORTANT:
 
 import pandas as pd
 
-from projects.project2.helpers import (
+from helpers import (
         fmt_dt,
         wide_to_long_rets,
         )
@@ -268,8 +268,8 @@ def mk_buy_tgt_sell_acq_rets(
     events = events.loc[dates]
     out = pd.Series(None, index=dates)
     for date in dates:
-        rets_date = rets.loc[date].set_index(idx_cols)
-        events_date = events.loc[date]
+        rets_date = rets.loc[[date]].set_index(idx_cols)
+        events_date = events.loc[[date]]
 
         buys = events_date.rename(columns={'tgt': idx_cols[1]}).set_index(idx_cols)
         buys = buys.join(rets_date, how='inner')
