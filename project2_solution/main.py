@@ -1315,7 +1315,189 @@ def _test_mk_buy_tgt_sell_mkt_rets():
 
 
 
+
+# Jordan more test functions
+
 def _test_mk_tgt_rets_by_event_time():
+    """
+    Copy of the main function that prints information about the profitability
+    of trading strategies
+
+    YOU MAY MODIFY THIS FUNCTION IN ANY WAY YOU LIKE.
+    """
+    print_msg("Running _test_main...", as_header=True)
+    # 1: Read CSV files
+    stk_rets = read_stk_rets()
+    ma_deals = read_ma_deals()
+    org_ff = read_org_ff()
+
+    # 2: Construct deal-level information
+    ma_info = mk_ma_info(ma_deals)
+
+    # 3: Compute abnormal returns
+    stk_arets = mk_stk_arets(
+            stk_rets=stk_rets,
+            org_ff=org_ff,
+    )
+
+    # 4: Expand events across event windows
+    expanded_ma_info = expand_event_dates(
+            events=ma_info,
+            valid_dates=stk_rets.index,
+    )
+
+    # 5: Construct trading strategy returns
+
+    # from buying the target and selling the acquirer
+    buy_tgt_sell_acq_rets = mk_buy_tgt_sell_acq_rets(
+            expanded_ma_info=expanded_ma_info,
+            stk_rets=stk_rets,
+            )
+    print_msg("summarise_series(buy_tgt_sell_acq_rets) ->",
+              summarise_series(buy_tgt_sell_acq_rets), '')
+
+    # from buying the target and selling the market
+    buy_tgt_sell_mkt_rets = mk_buy_tgt_sell_mkt_rets(
+            expanded_ma_info=expanded_ma_info,
+            stk_arets=stk_arets,
+            )
+    print_msg("summarise_series(buy_tgt_sell_mkt_rets) ->",
+              summarise_series(buy_tgt_sell_mkt_rets), '')
+
+    print(stk_rets)
+    stk_rets.info()
+    print(expanded_ma_info.head(50))
+    expanded_ma_info.info()
+    # 6: Build an event-time panel for target returns
+    tgt_rets_by_event_time = mk_tgt_rets_by_event_time(
+        stk_rets=stk_rets,
+        expanded_ma_info=expanded_ma_info,
+        )
+    print(tgt_rets_by_event_time)
+    tgt_rets_by_event_time.info()
+    print(tgt_rets_by_event_time.head(60))
+
+    import datetime as dt
+
+    print('\n expanded_ma_info')
+    print(expanded_ma_info)
+    print('\n stk_rets')
+    print(stk_rets)
+    print('\n tgt_rets_by_event_time')
+    print(tgt_rets_by_event_time)
+
+    tgt_rets_by_event_time.info()
+
+
+
+
+
+    print('\n expanded_ma_info')
+    print(expanded_ma_info[expanded_ma_info['dealno'] == 2647141020])
+    print('\n stk_rets')
+    print(stk_rets.loc[dt.datetime(2021,4,12):dt.datetime(2021,5,13),'NUAN'])
+    print('\n tgt_rets_by_event_time')
+    print(tgt_rets_by_event_time.loc[:,2647141020])
+
+
+
+def _test_mk_prop_positive_tgt_rets():
+    """
+    Copy of the main function that prints information about the profitability
+    of trading strategies
+
+    YOU MAY MODIFY THIS FUNCTION IN ANY WAY YOU LIKE.
+    """
+    print_msg("Running _test_main...", as_header=True)
+    # 1: Read CSV files
+    stk_rets = read_stk_rets()
+    ma_deals = read_ma_deals()
+    org_ff = read_org_ff()
+
+    # 2: Construct deal-level information
+    ma_info = mk_ma_info(ma_deals)
+
+    # 3: Compute abnormal returns
+    stk_arets = mk_stk_arets(
+            stk_rets=stk_rets,
+            org_ff=org_ff,
+    )
+
+    # 4: Expand events across event windows
+    expanded_ma_info = expand_event_dates(
+            events=ma_info,
+            valid_dates=stk_rets.index,
+    )
+
+    # 5: Construct trading strategy returns
+
+    # from buying the target and selling the acquirer
+    buy_tgt_sell_acq_rets = mk_buy_tgt_sell_acq_rets(
+            expanded_ma_info=expanded_ma_info,
+            stk_rets=stk_rets,
+            )
+    print_msg("summarise_series(buy_tgt_sell_acq_rets) ->",
+              summarise_series(buy_tgt_sell_acq_rets), '')
+
+    # from buying the target and selling the market
+    buy_tgt_sell_mkt_rets = mk_buy_tgt_sell_mkt_rets(
+            expanded_ma_info=expanded_ma_info,
+            stk_arets=stk_arets,
+            )
+    print_msg("summarise_series(buy_tgt_sell_mkt_rets) ->",
+              summarise_series(buy_tgt_sell_mkt_rets), '')
+
+    # 6: Build an event-time panel for target returns
+    tgt_rets_by_event_time = mk_tgt_rets_by_event_time(
+        stk_rets=stk_rets,
+        expanded_ma_info=expanded_ma_info,
+        )
+
+    # 7: Compute event-time positive-return proportions
+    prop_positive_tgt_rets = mk_prop_positive_tgt_rets(
+        tgt_rets_by_event_time= tgt_rets_by_event_time)
+    #print_msg("summarise_series(prop_positive_tgt_rets- 0.5) ->",
+              #summarise_series(prop_positive_tgt_rets - 0.5), '')
+    #print(tgt_rets_by_event_time)
+    #print(prop_positive_tgt_rets)
+
+
+    #7 operates as intended since NaN>0 evaluates to false
+    #list = [True,True,False]
+    #list_2 = [False,False,False]
+    #list_3 = [True, False, False]
+    #test_df = pd.DataFrame(data = {'list_1':list,'list_2':list_2,'list_3':list_3})
+    #print(test_df)
+    #print(test_df.mean(axis = 1))
+
+    print("old version")
+    old_version = (tgt_rets_by_event_time > 0).mean(axis=1)
+    print(old_version)
+
+    print("new version")
+    print(prop_positive_tgt_rets)
+
+    print(prop_positive_tgt_rets >= old_version)
+
+    print(tgt_rets_by_event_time)
+    print(tgt_rets_by_event_time.iloc[17:21,0:4])
+
+    print((tgt_rets_by_event_time.iloc[17:21,0:4] > 0).mean(axis=1))
+
+    m = mk_prop_positive_tgt_rets(tgt_rets_by_event_time.iloc[17:21,0:4])
+    print(m)
+    #Originally this
+    #return (tgt_rets_by_event_time > 0).mean(axis=1)
+
+    #this fails to ingore Nan (which automatically get evaluated as false
+
+    #numerators = (tgt_rets_by_event_time > 0 & type(tgt_rets_by_event_time) == int).sum(axis=1)
+    #denominators = (type(tgt_rets_by_event_time) == int).sum(axis=1)
+    #sample_proportions = numerators / denominators
+    #return sample_proportions
+
+
+def _test_mk_tgt_rets_by_event_time1():
     print("Running _test_mk_tgt_rets_by_event_time...")
     """
     Tests for mk_tgt_rets_by_event_time(stk_rets, expanded_ma_info)
@@ -1478,7 +1660,12 @@ def run_tests():
     # _test_expand_event_dates1()
     # _test_mk_buy_tgt_sell_acq_rets()
     # _test_mk_buy_tgt_sell_mkt_rets()
-    # _test_mk_tgt_rets_by_event_time()
+    #_test_mk_tgt_rets_by_event_time()
+    #_test_mk_tgt_rets_by_event_time1()
+    # _test_mk_prop_positive_tgt_rets()
+
+
+        
  
 
  

@@ -440,7 +440,10 @@ def mk_prop_positive_tgt_rets(
         of deals with a strictly positive target return at that event time.
         Missing returns are ignored when computing the proportion.
     """
-    return (tgt_rets_by_event_time > 0).mean(axis=1)
+    numerator = (tgt_rets_by_event_time > 0).sum(axis=1)
+    denominator = (tgt_rets_by_event_time.abs() >0).sum(axis=1)
+    sample_proportions = numerator / denominator
+    return sample_proportions
 
 
 
