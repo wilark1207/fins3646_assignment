@@ -10,7 +10,7 @@ Please refer to the project description for further details about this module.
 import pandas as pd
 import numpy as np
 
-from projects.project2.helpers import (
+from helpers import (
         fmt_dt,
         fmt_tic,
         read_ma_deals,
@@ -21,7 +21,7 @@ from projects.project2.helpers import (
         print_msg,
         )
 
-from projects.project2.task_project2 import (
+from task_project2 import (
         mk_ma_info,
         mk_stk_arets,
         mean_by_dates,
@@ -1315,6 +1315,148 @@ def _test_mk_buy_tgt_sell_mkt_rets():
 
 
 
+def _test_mk_tgt_rets_by_event_time():
+    print("Running _test_mk_tgt_rets_by_event_time...")
+    """
+    Tests for mk_tgt_rets_by_event_time(stk_rets, expanded_ma_info)
+
+    Behaviour being verified
+    ------------------------
+    For each row in expanded_ma_info, compute event_time = (date - announcement).days.
+    For every (event_time, dealno), look up the target's return in stk_rets on that
+    date. The output is a DataFrame indexed by event_time with one column per deal,
+    containing the target's return or NaN if the return is missing.
+
+    This test covers:
+
+      A) Real-data smoke test:
+         - Non-empty DataFrame with integer-like event_time index in ascending order.
+         - Columns exactly match the deal numbers in expanded_ma_info.
+         - A sample lookup matches the source stk_rets value.
+         - Event times fall inside the expected 1–30 day window.
+
+      B) Synthetic example:
+         - Small hand-crafted data with three deals across two event times.
+         - Confirms correct placement of returns and NaNs when a target/ date
+           combination is missing from stk_rets.
+    """
+
+    # ----------------------------------------------------------
+    # A) REAL DATA SMOKE TEST
+    # ----------------------------------------------------------
+    stk_rets = read_stk_rets()
+    ma_deals = read_ma_deals()
+    ma_info = mk_ma_info(ma_deals)
+
+    expanded_ma_info = expand_event_dates(
+        events=ma_info,
+        valid_dates=stk_rets.index,
+    )
+
+    tgt_panel = mk_tgt_rets_by_event_time(
+        stk_rets=stk_rets,
+        expanded_ma_info=expanded_ma_info,
+    )
+
+    if not isinstance(tgt_panel, pd.DataFrame):
+        raise Exception(
+            f"mk_tgt_rets_by_event_time did not return a DataFrame, got {type(tgt_panel)}"
+        )
+
+    if tgt_panel.empty:
+        raise Exception("tgt_rets_by_event_time is empty on real data (unexpected)")
+
+    if not tgt_panel.index.is_monotonic_increasing:
+        raise Exception("tgt_rets_by_event_time index is not sorted ascending")
+
+    if not all(pd.api.types.is_numeric_dtype(tgt_panel[col]) for col in tgt_panel.columns):
+        raise Exception("tgt_rets_by_event_time contains non-numeric columns")
+
+    deals_in_expanded = set(expanded_ma_info.dealno.unique())
+    cols_in_output = set(tgt_panel.columns)
+    missing_cols = deals_in_expanded - cols_in_output
+    extra_cols = cols_in_output - deals_in_expanded
+    if missing_cols or extra_cols:
+        raise Exception(
+            "Column mismatch between expanded_ma_info.dealno and tgt_rets_by_event_time.\n"
+            f"Missing columns: {sorted(missing_cols)}\n"
+            f"Extra columns:   {sorted(extra_cols)}"
+        )
+
+    event_times = tgt_panel.index.to_series()
+    if event_times.min() < 1 or event_times.max() > 30:
+        raise Exception(
+            f"Event times outside 1–30 day window: min={event_times.min()}, max={event_times.max()}"
+        )
+
+    sample = expanded_ma_info[
+        expanded_ma_info["tgt"].isin(stk_rets.columns)
+    ].copy()
+
+    sample["source_ret"] = [
+        stk_rets.loc[row["date"], row["tgt"]]
+        for _, row in sample.iterrows()
+    ]
+    sample = sample[sample["source_ret"].notna()]
+
+    if sample.empty:
+        raise Exception("Could not find a sample row with a non-missing return for spot-checking")
+
+    sample_row = sample.iloc[0]
+    sample_event_time = (sample_row["date"] - sample_row["announcement"]).days
+    lookup_val = tgt_panel.loc[sample_event_time, sample_row["dealno"]]
+    if not np.isclose(lookup_val, sample_row["source_ret"]):
+        raise Exception(
+            "Spot-check failed: tgt_rets_by_event_time value does not match stk_rets.\n"
+            f"Expected: {sample_row['source_ret']}\n"
+            f"Got:      {lookup_val}\n"
+            f"Event time: {sample_event_time}, Deal: {sample_row['dealno']}"
+        )
+
+    # ----------------------------------------------------------
+    # B) SYNTHETIC EXAMPLE
+    # ----------------------------------------------------------
+    dates = pd.to_datetime(["2022-01-03", "2022-01-04", "2022-01-05"])
+    stk_small = pd.DataFrame(
+        {
+            "AAA": [0.10, 0.20, 0.30],
+            "BBB": [0.05, 0.15, 0.07],
+        },
+        index=dates,
+    )
+
+    expanded_small = pd.DataFrame(
+        {
+            "date": [dates[1], dates[2], dates[1], dates[1]],
+            "announcement": [dates[0]] * 4,
+            "dealno": [1, 1, 2, 3],
+            "acq": ["ACQ1"] * 4,
+            "tgt": ["AAA", "AAA", "BBB", "CCC"],
+        }
+    )
+
+    expected_small = pd.DataFrame(
+        {
+            1: [0.20, 0.30],
+            2: [0.15, np.nan],
+            3: [np.nan, np.nan],
+        },
+        index=[1, 2],
+    )
+
+    got_small = mk_tgt_rets_by_event_time(
+        stk_rets=stk_small,
+        expanded_ma_info=expanded_small,
+    )
+
+    pd.testing.assert_frame_equal(
+        got_small.sort_index(axis=0).sort_index(axis=1),
+        expected_small.sort_index(axis=0).sort_index(axis=1),
+    )
+
+    print(" _test_mk_tgt_rets_by_event_time passed successfully!")
+
+
 # ----------------------------------------------------------------------------
 #  Function to run all other tests
 # ----------------------------------------------------------------------------
@@ -1336,13 +1478,10 @@ def run_tests():
     # _test_expand_event_dates1()
     # _test_mk_buy_tgt_sell_acq_rets()
     # _test_mk_buy_tgt_sell_mkt_rets()
+    # _test_mk_tgt_rets_by_event_time()
  
 
-
+ 
     
 if __name__ == "__main__":
     run_tests()
-
-
-
-
