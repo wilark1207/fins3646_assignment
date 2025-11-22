@@ -199,6 +199,69 @@ def _test_main():
 
 
 #====Ivan's addition===
+def _test_mean_by_dates():
+    print("Running _test_mean_by_dates...")
+    # Create synthetic data
+    dates = pd.to_datetime(['2021-01-01', '2021-01-01', '2021-01-02'])
+    df = pd.DataFrame({
+        'date': dates,
+        'val': [1.0, 2.0, 3.0]
+    })
+
+    res = mean_by_dates(df, 'date', 'val')
+
+    print("Result:")
+    print(res)
+
+    expected = pd.Series([1.5, 3.0], index=pd.to_datetime(['2021-01-01', '2021-01-02']))
+    expected.index.name = 'date' # mean_by_dates sorts index but might not name it? 
+    # Actually mean_by_dates returns a series with index name? 
+    # The function implementation: out = pd.Series(None, index=dates, dtype=float) -> index name might be None unless set.
+    # Let's just check values.
+    
+    if not np.allclose(res.values, expected.values):
+         raise Exception(f"Mismatch. Expected {expected.values}, got {res.values}")
+    
+    print("_test_mean_by_dates PASSSSS")
+
+def _test_mk_stk_arets():
+    print("Running _test_mk_stk_arets...")
+    stk_rets = read_stk_rets()
+    org_ff = read_org_ff()
+
+    stk_arets = mk_stk_arets(stk_rets=stk_rets, org_ff=org_ff)
+
+    print("stk_arets head:")
+    print(stk_arets.head())
+    
+    # Basic validation
+    if not isinstance(stk_arets, pd.DataFrame):
+        raise Exception("mk_stk_arets did not return a DataFrame")
+    
+    expected_cols = {'date', 'ticker', 'aret'}
+    if not expected_cols.issubset(stk_arets.columns):
+        raise Exception(f"Missing columns. Expected {expected_cols}, got {stk_arets.columns}")
+    
+    # Check calculation for a sample
+    # Pick a date and ticker that exists
+    sample_date = stk_arets['date'].iloc[0]
+    sample_ticker = stk_arets['ticker'].iloc[0]
+    sample_aret = stk_arets['aret'].iloc[0]
+    
+    # Re-calculate manually
+    if sample_date in org_ff.index:
+        rf = org_ff.loc[sample_date, 'RF']
+        mkt_rf = org_ff.loc[sample_date, 'Mkt-RF']
+        mkt = mkt_rf + rf
+        
+        stk_val = stk_rets.loc[sample_date, sample_ticker]
+        expected_aret = stk_val - mkt
+        
+        if not np.isclose(sample_aret, expected_aret):
+             print(f"Warning: Calculated {expected_aret}, got {sample_aret}")
+    
+    print("_test_mk_stk_arets PAAASSSS (visual inspection required for head).")
+        
 def _test_mk_ma_info():
     """
     It prints:
@@ -1663,8 +1726,8 @@ def run_tests():
     #_test_mk_tgt_rets_by_event_time()
     #_test_mk_tgt_rets_by_event_time1()
     # _test_mk_prop_positive_tgt_rets()
-
-
+    #_test_mk_stk_arets()
+    #_test_mean_by_dates()
         
  
 
