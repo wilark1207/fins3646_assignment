@@ -441,7 +441,7 @@ def mk_prop_positive_tgt_rets(
         Missing returns are ignored when computing the proportion.
     """
     numerator = (tgt_rets_by_event_time > 0).sum(axis=1)
-    denominator = (tgt_rets_by_event_time.abs() >0).sum(axis=1)
+    denominator = (tgt_rets_by_event_time.abs() >=0).sum(axis=1)
     sample_proportions = numerator / denominator
     return sample_proportions
 
