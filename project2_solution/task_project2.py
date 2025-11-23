@@ -10,7 +10,7 @@ IMPORTANT:
 
 import pandas as pd
 
-from helpers import (
+from projects.project2.helpers import (
         fmt_dt,
         wide_to_long_rets,
         )
